@@ -21,10 +21,10 @@ async fn run() -> Result<(), anyhow::Error> {
         vtee. ! fakesink
         vtee. !
         queue ! 
-        x264enc key-int-max=30 speed-preset=ultrafast !
+        x264enc key-int-max=0 speed-preset=ultrafast tune=zerolatency !
         queue !
         video/x-h264,profile=constrained-baseline ! 
-        h264parse config-interval=1 ! 
+        h264parse config-interval=-1 ! 
         rtph264pay pt=102 ! application/x-rtp,clock-rate=90000,media=video,encoding=H264,profile-level=constrained-baseline ! progressreport !  queue ! publisher.  ",
     )?
     .downcast::<gst::Pipeline>()
