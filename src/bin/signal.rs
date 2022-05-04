@@ -21,11 +21,11 @@ async fn run() -> Result<(), anyhow::Error> {
         vtee. ! fakesink
         vtee. !
         queue ! 
-        x264enc speed-preset=ultrafast !
+        x264enc key-int-max=30 speed-preset=ultrafast !
         queue !
-        video/x-h264,profile=baseline ! 
-        h264parse config-interval=-1 ! 
-        rtph264pay ! application/x-rtp,clock-rate=90000,media=video,encoding=H264 ! progressreport !  queue ! publisher.  ",
+        video/x-h264,profile=constrained-baseline ! 
+        h264parse config-interval=1 ! 
+        rtph264pay pt=102 ! application/x-rtp,clock-rate=90000,media=video,encoding=H264,profile-level=constrained-baseline ! progressreport !  queue ! publisher.  ",
     )?
     .downcast::<gst::Pipeline>()
     .unwrap();
@@ -35,7 +35,8 @@ async fn run() -> Result<(), anyhow::Error> {
     client
         .subscriber
         .connect_pad_added(enc!( (pipeline) move |_webrtc, subscriber_pad| {
-            debug!("pad added!");
+            info!("subscriber pad added!");
+
             let decodebin =
                 gst::ElementFactory::make("decodebin", None).expect("could not make decodebin");
 
@@ -45,7 +46,7 @@ async fn run() -> Result<(), anyhow::Error> {
 
                 let sink = if name.starts_with("video/") {
                     gst::parse_bin_from_description(
-                        "queue ! glcolorscale ! glimagesink ",
+                        "queue ! videoconvert ! glimagesink async=false sync=false ",
                         true,
                     ).unwrap()
                 } else if name.starts_with("audio/") {
@@ -60,7 +61,6 @@ async fn run() -> Result<(), anyhow::Error> {
 
                 pipeline.add(&sink).unwrap();
                 sink.sync_state_with_parent().unwrap();
-
                 let sinkpad = sink.get_static_pad("sink").unwrap();
                 decoded_pad.link(&sinkpad).unwrap();
             }));
